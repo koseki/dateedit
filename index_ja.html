@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; UTF-8">
+		<title>Untitled Document</title>
+		<script type="text/javascript" src="js/prototype.js"></script>
+		<script type="text/javascript" src="js/dateedit.js"></script>
+	</head>
+	<body>
+
+<form></form>
+	<a href="javascript:;" id="date_selector_mode_switch" onClick="toggle_date_selector()">テキスト</a><br />
+	<div id="event_date_container">
+	</div>
+	<a href="javascript:;" id="date_selector_add_switch" onClick="add_date_selector()">追加</a>
+</p>
+
+<input type="hidden" name="event_event_dates_as_string" id="event_event_dates_as_string"/>
+<script type="text/javascript">
+
+var date_selector_id = 0;
+var ds_list = new Array;
+
+var ds_listener = {
+  del: function(s) { 
+    this.arr.delete_element(s);
+    if (this.arr.length == 0) {
+      add_date_selector();
+    }
+  },
+  arr: ds_list
+};
+
+function add_date_selector() {
+  var d = new Date();
+  if (ds_list.length == 0) {
+    d = [d.getFullYear(), d.getMonth() + 1, d.getDate()]
+  } else {
+    var ds = ds_list[ds_list.length - 1];
+    if (ds.is_range) {
+      d = ds.get_date_to();
+    } else {
+      d = ds.get_date_from();
+    }
+    d = new Date(new Date(d[0], d[1]-1, d[2]).getTime() + 86400000);
+    d = [d.getFullYear(), d.getMonth() + 1, d.getDate()]
+  }
+  
+  var ds = new DateSelector(date_selector_id, d[0], d[1], d[2], ds_listener);
+  $('event_date_container').appendChild(ds.element);
+  date_selector_id ++;
+  ds_list.push(ds);
+  return null;
+}
+
+function create_date_selector_string() {
+  if (date_selector_mode == "textarea") {
+    return $('date_selector_textarea').value;
+  }
+
+  var str = "";
+  for (var i = 0; i < ds_list.length; i++) {
+    str += ds_list[i].to_s() + "\r"; // \r?
+  }
+  return str;
+}
+
+var date_selector_mode = "select";
+function toggle_date_selector() {
+  if (date_selector_mode == "select") {
+    var ds = null;
+    var str = create_date_selector_string();
+    var te = document.createElement("textarea");
+    te.setAttribute("id", "date_selector_textarea");
+    te.setAttribute("rows", 10);
+    te.setAttribute("cols", 50);
+    te.appendChild(document.createTextNode(str));
+    
+    var container = document.createElement("div");
+    container.setAttribute("id", "event_date_container");
+    container.appendChild(te);
+    
+    var curr = $('event_date_container');
+    curr.parentNode.replaceChild(container, curr);
+    
+    ds_list.splice(0, ds_list.length);
+    
+    $('date_selector_mode_switch').firstChild.nodeValue = "選択";
+    $('date_selector_add_switch').toggle();
+
+    date_selector_mode = "textarea";
+  } else {
+    date_selector_text_to_menu($('date_selector_textarea').value);
+    $('date_selector_add_switch').toggle();
+  }
+}
+
+function exec_submit() {
+  $('event_event_dates_as_string').value = create_date_selector_string();
+  $('event_image').value = $('thumbnailSrc').value;
+}
+
+function date_selector_text_to_menu(str) {
+  var container = document.createElement("div");
+  container.setAttribute("id", "event_date_container");
+  
+  var lines = str.split(/(?:\r\n|\r|\n)+/);
+  var re1 = /(\d{4})[^\d]*(\d{1,2})[^\d]*(\d{1,2})/;
+  
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    var tokens = l.split(/\s+/,2);
+    if (tokens.length <= 0 || tokens[0] == "") {
+      continue;
+    }
+      
+    var date_from = tokens[0].match(re1);
+    if (date_from == null) {
+      alert("日付けの形式に問題があります。: " + l);
+      break;
+    }
+      
+    var date_to = null;
+    if (1 < tokens.length && tokens[1] != "") {
+      date_to = tokens[1].match(re1);
+      if (date_to == null) {
+        alert("日付けの形式に問題があります。: " + l);
+        break;
+      }
+    }
+   
+    var ds = new DateSelector(date_selector_id, Number(date_from[1]), Number(date_from[2]), Number(date_from[3]), ds_listener);
+    if (date_to != null) {
+      ds.show_end_date(Number(date_to[1]), Number(date_to[2]), Number(date_to[3]));
+    }
+
+    container.appendChild(ds.element);
+    ds_list.push(ds);
+  }
+
+  $('date_selector_mode_switch').firstChild.nodeValue = "テキスト";
+  var curr = $('event_date_container');
+  curr.parentNode.replaceChild(container, curr);
+  
+  date_selector_mode = "select";
+}
+
+if ($('event_event_dates_as_string').value != "") {
+  date_selector_text_to_menu($('event_event_dates_as_string').value);
+} else {
+  add_date_selector();
+}
+	
+</script>
+		
+	</body>
+</html>
